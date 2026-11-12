@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Área da Equipa — Como Vai a Tua Fé?</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        /* ==============================
+           ÁREA DA EQUIPA
+           ============================== */
+
+        .team-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 30px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* círculos decorativos */
+
+        .team-page::before {
+            content: "";
+            position: absolute;
+            width: 430px;
+            height: 430px;
+            border: 1px solid rgba(210,162,60,.13);
+            border-radius: 50%;
+            top: -260px;
+            right: -150px;
+        }
+
+        .team-page::after {
+            content: "";
+            position: absolute;
+            width: 350px;
+            height: 350px;
+            border: 1px solid rgba(210,162,60,.10);
+            border-radius: 50%;
+            bottom: -230px;
+            left: -150px;
+        }
+
+        .team-container {
+            width: 100%;
+            max-width: 430px;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* MARCA */
+
+        .team-brand {
+            text-align: center;
+            margin-bottom: 22px;
+        }
+
+        .team-brand-main {
+            color: #171717;
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: 2px;
+        }
+
+        .team-brand-line {
+            width: 45px;
+            height: 2px;
+            background: #c99b3b;
+            margin: 9px auto 0;
+        }
+
+        /* CARTÃO */
+
+        .team-card {
+            background: rgba(255,255,255,.97);
+            border: 1px solid #e1e1e1;
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow:
+                0 18px 50px rgba(0,0,0,.08),
+                0 2px 8px rgba(210,162,60,.05);
+        }
+
+        .team-icon {
+            width: 52px;
+            height: 52px;
+            margin: 0 auto 17px;
+
+            display: grid;
+            place-items: center;
+
+            border-radius: 50%;
+
+            color: white;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #d9aa43,
+                    #b7831e
+                );
+
+            font-size: 21px;
+        }
+
+        .team-card h1 {
+            margin: 0;
+            text-align: center;
+
+            color: #181818;
+
+            font-size: 25px;
+            line-height: 1.15;
+            letter-spacing: -.3px;
+        }
+
+        .team-intro {
+            margin: 9px auto 25px;
+
+            max-width: 300px;
+
+            text-align: center;
+
+            color: #777;
+
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        /* CAMPOS */
+
+        .team-form label {
+            display: block;
+
+            margin: 15px 0 6px;
+
+            color: #333;
+
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .team-form input {
+            width: 100%;
+
+            padding: 12px 13px;
+
+            border: 1px solid #d5d5d5;
+            border-radius: 10px;
+
+            background: #fff;
+
+            color: #222;
+
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 13px;
+
+            outline: none;
+
+            transition: .2s ease;
+        }
+
+        .team-form input:focus {
+            border-color: #c99b3b;
+
+            box-shadow:
+                0 0 0 3px rgba(201,155,59,.09);
+        }
+
+        /* BOTÃO */
+
+        .team-form button {
+            width: 100%;
+
+            margin-top: 22px;
+
+            padding: 13px;
+
+            border: none;
+            border-radius: 10px;
+
+            cursor: pointer;
+
+            color: white;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #d9aa43,
+                    #bd8a25
+                );
+
+            font-family: Arial, Helvetica, sans-serif;
+
+            font-size: 12px;
+            font-weight: 800;
+
+            letter-spacing: .7px;
+
+            transition: .2s ease;
+        }
+
+        .team-form button:hover {
+            transform: translateY(-1px);
+
+            box-shadow:
+                0 8px 20px rgba(190,140,40,.20);
+        }
+
+        /* AVISO */
+
+        .team-notice {
+            margin-top: 15px;
+
+            padding: 10px 12px;
+
+            border-radius: 9px;
+
+            text-align: center;
+
+            font-size: 11px;
+        }
+
+        .team-notice.success {
+            color: #236633;
+            background: #eff8f1;
+            border: 1px solid #d4ead8;
+        }
+
+        .team-notice.error {
+            color: #a02727;
+            background: #fff1f1;
+            border: 1px solid #efd2d2;
+        }
+
+        /* RODAPÉ */
+
+        .team-footer {
+            text-align: center;
+
+            margin-top: 18px;
+
+            color: #999;
+
+            font-size: 9px;
+
+            letter-spacing: 1px;
+        }
+
+        /* TELEMÓVEL */
+
+        @media (max-width: 520px) {
+
+            .team-page {
+                padding: 20px;
+            }
+
+            .team-card {
+                padding: 25px 20px;
+            }
+
+            .team-brand-main {
+                font-size: 16px;
+            }
+
+            .team-card h1 {
+                font-size: 23px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <main class="team-page">
+
+        <div class="team-container">
+
+            <div class="team-brand">
+                <div class="team-brand-main">
+                    COMO VAI A TUA FÉ?
+                </div>
+
+                <div class="team-brand-line"></div>
+            </div>
+
+
+            <section class="team-card">
+
+                <div class="team-icon">
+                    🔐
+                </div>
+
+                <h1>
+                    Área da equipa
+                </h1>
+
+                <p class="team-intro">
+                    Acesso reservado aos administradores.
+                    As mensagens recebidas são tratadas com confidencialidade.
+                </p>
+
+
+                <form method="post" class="team-form">
+
+                    <label for="username">
+                        Utilizador
+                    </label>
+
+                    <input
+                        id="username"
+                        name="username"
+                        autocomplete="username"
+                        required
+                    >
+
+
+                    <label for="password">
+                        Palavra-passe
+                    </label>
+
+                    <input
+                        id="password"
+                        name="password"
+                        type="password"
+                        autocomplete="current-password"
+                        required
+                    >
+
+
+                    <button type="submit">
+                        ENTRAR
+                    </button>
+
+                </form>
+
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+
+                    {% for category, text in messages %}
+
+                        <div class="team-notice {{ category }}">
+                            {{ text }}
+                        </div>
+
+                    {% endfor %}
+
+                {% endwith %}
+
+            </section>
+
+
+            <div class="team-footer">
+                ÁREA RESTRITA • COMO VAI A TUA FÉ?
+            </div>
+
+        </div>
+
+    </main>
+
+</body>
+</html>

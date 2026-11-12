@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Painel — Como Vai a Tua Fé?</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        /* ================================
+           PAINEL ADMINISTRATIVO
+           ================================ */
+
+        .admin-page {
+            min-height: 100vh;
+            padding: 35px 25px;
+            position: relative;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 90% 10%, rgba(218, 171, 55, 0.07), transparent 25%),
+                radial-gradient(circle at 5% 90%, rgba(218, 171, 55, 0.05), transparent 25%),
+                #ffffff;
+        }
+
+        /* Decoração */
+        .admin-page::before {
+            content: "";
+            position: absolute;
+            width: 280px;
+            height: 280px;
+            border: 1px solid rgba(190, 145, 35, 0.15);
+            border-radius: 50%;
+            top: -150px;
+            right: -80px;
+            pointer-events: none;
+        }
+
+        .admin-page::after {
+            content: "";
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            border: 1px solid rgba(190, 145, 35, 0.12);
+            border-radius: 50%;
+            bottom: -130px;
+            left: -80px;
+            pointer-events: none;
+        }
+
+        /* Cabeçalho */
+        .admin-header {
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .admin-header .brand {
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: #171717;
+            margin-bottom: 8px;
+        }
+
+        .admin-header h1 {
+            margin: 0;
+            font-size: 32px;
+            line-height: 1.15;
+            color: #171717;
+            font-weight: 700;
+        }
+
+        .admin-header p {
+            margin: 7px 0 0;
+            font-size: 13px;
+            color: #777;
+        }
+
+        /* Botão sair */
+        .logout {
+            width: auto !important;
+            min-width: 85px;
+            padding: 10px 20px !important;
+            border: none;
+            border-radius: 7px;
+            background: #c99625;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s ease;
+        }
+
+        .logout:hover {
+            background: #ad7e18;
+            transform: translateY(-1px);
+        }
+
+        /* Mensagens */
+        .messages {
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Mensagem vazia */
+        .empty {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 35px 20px;
+            background: #ffffff;
+            border: 1px solid #eeeeee;
+            border-radius: 12px;
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Cartão da mensagem */
+        .message-card {
+            background: rgba(255, 255, 255, 0.97);
+            border: 1px solid #eeeeee;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
+        }
+
+        .message-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 5px 9px;
+            border-radius: 20px;
+            background: #f5e8c5;
+            color: #8a6719;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .status {
+            font-size: 10px;
+            color: #888;
+        }
+
+        .message-text {
+            margin: 0 0 14px;
+            color: #333;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .message-card small {
+            display: block;
+            margin-bottom: 16px;
+            color: #999;
+            font-size: 10px;
+        }
+
+        /* Ações */
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .actions form {
+            margin: 0;
+        }
+
+        .actions select {
+            height: 34px;
+            padding: 0 9px;
+            border: 1px solid #dddddd;
+            border-radius: 6px;
+            background: white;
+            color: #444;
+            font-size: 11px;
+            outline: none;
+        }
+
+        .actions button {
+            height: 34px;
+            padding: 0 13px;
+            border: none;
+            border-radius: 6px;
+            background: #c99625;
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .actions button:hover {
+            background: #ad7e18;
+        }
+
+        .actions .danger {
+            background: #f1f1f1;
+            color: #777;
+        }
+
+        .actions .danger:hover {
+            background: #e5e5e5;
+            color: #555;
+        }
+
+        /* Telemóvel */
+        @media (max-width: 700px) {
+
+            .admin-page {
+                padding: 25px 15px;
+            }
+
+            .admin-header {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .admin-header h1 {
+                font-size: 26px;
+            }
+
+            .logout {
+                min-width: 75px;
+            }
+
+            .messages {
+                grid-template-columns: 1fr;
+            }
+
+            .message-card {
+                padding: 17px;
+            }
+
+            .actions {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .actions form {
+                width: 100%;
+            }
+
+            .actions select,
+            .actions button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <main class="admin-page">
+
+        <header class="admin-header">
+
+            <div>
+                <div class="brand">COMO VAI A TUA FÉ?</div>
+
+                <h1>Mensagens recebidas</h1>
+
+                <p>
+                    Administrador: {{ username }}
+                </p>
+            </div>
+
+            <form method="post" action="{{ url_for('logout') }}">
+                <button class="logout" type="submit">
+                    Sair
+                </button>
+            </form>
+
+        </header>
+
+
+        {% if not messages %}
+
+            <section class="empty">
+                Ainda não existem mensagens.
+            </section>
+
+        {% endif %}
+
+
+        <section class="messages">
+
+            {% for item in messages %}
+
+                <article class="message-card">
+
+                    <div class="message-top">
+
+                        <span class="tag">
+                            {{ item["category"] }}
+                        </span>
+
+                        <span class="status">
+                            {{ item["status"] }}
+                        </span>
+
+                    </div>
+
+
+                    <p class="message-text">
+                        {{ item["message"] }}
+                    </p>
+
+
+                    <small>
+                        {{ item["created_at"] }}
+                    </small>
+
+
+                    <div class="actions">
+
+                        <form method="post"
+                              action="{{ url_for('change_status', message_id=item['id']) }}">
+
+                            <select name="status">
+
+                                <option {% if item["status"] == "Não lida" %}selected{% endif %}>
+                                    Não lida
+                                </option>
+
+                                <option {% if item["status"] == "Lida" %}selected{% endif %}>
+                                    Lida
+                                </option>
+
+                                <option {% if item["status"] == "Arquivada" %}selected{% endif %}>
+                                    Arquivada
+                                </option>
+
+                            </select>
+
+                            <button type="submit">
+                                Atualizar
+                            </button>
+
+                        </form>
+
+
+                        <form method="post"
+                              action="{{ url_for('delete_message', message_id=item['id']) }}"
+                              onsubmit="return confirm('Apagar esta mensagem?');">
+
+                            <button class="danger" type="submit">
+                                Apagar
+                            </button>
+
+                        </form>
+
+                    </div>
+
+                </article>
+
+            {% endfor %}
+
+        </section>
+
+    </main>
+
+</body>
+</html>

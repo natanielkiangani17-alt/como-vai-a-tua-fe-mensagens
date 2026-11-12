@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Como Vai a Tua Fé? — Mensagem Anónima</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="glow glow-one"></div>
+    <div class="glow glow-two"></div>
+
+    <main class="public-page">
+        <header class="hero">
+            <div class="logo-wrap">
+                <img src="{{ url_for('static', filename='logo.png') }}"
+                     alt="Como Vai a Tua Fé?"
+                     class="logo">
+            </div>
+
+            <span class="eyebrow">UM ESPAÇO DE ESCUTA E FÉ</span>
+
+            <h1>Podes falar.<br><span>Estamos aqui para ouvir.</span></h1>
+
+            <p class="hero-text">
+                Partilha o teu pedido de oração, testemunho ou aquilo que está
+                no teu coração. Não precisas dizer quem és.
+            </p>
+        </header>
+
+        <section class="form-card">
+            <div class="card-heading">
+                <div class="icon">✦</div>
+                <div>
+                    <h2>Envia a tua mensagem</h2>
+                    <p>A tua mensagem será recebida de forma anónima.</p>
+                </div>
+            </div>
+
+            <form action="{{ url_for('enviar') }}" method="post">
+                <input type="text" name="website" class="honeypot"
+                       tabindex="-1" autocomplete="off">
+
+                <label for="category">O que queres partilhar?</label>
+                <select id="category" name="category" required>
+                    <option value="">Escolhe uma opção</option>
+                    <option>Pedido de oração</option>
+                    <option>Testemunho</option>
+                    <option>Pedido de ajuda</option>
+                    <option>Mensagem</option>
+                    <option>Outro</option>
+                </select>
+
+                <label for="message">A tua mensagem</label>
+                <textarea id="message" name="message" maxlength="5000"
+                    placeholder="Escreve aqui o que está no teu coração..." required></textarea>
+
+                <div class="privacy-box">
+                    <span>🔒</span>
+                    <p>
+                        Não precisas informar o teu nome, telefone ou email.
+                        Para maior privacidade, evita colocar dados pessoais na mensagem.
+                    </p>
+                </div>
+
+                <button type="submit">
+                    <span>ENVIAR ANONIMAMENTE</span>
+                    <b>→</b>
+                </button>
+            </form>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, text in messages %}
+                    <div class="notice {{ category }}">{{ text }}</div>
+                {% endfor %}
+            {% endwith %}
+        </section>
+
+        <footer>
+            <div class="line"></div>
+            <p>“Uma fé mais forte, uma vida melhor.”</p>
+            <small>COMO VAI A TUA FÉ? • 2026</small>
+        </footer>
+    </main>
+</body>
+</html>
