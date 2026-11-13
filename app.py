@@ -15,8 +15,16 @@ from flask import (
     jsonify,
 )
 
-from werkzeug.security import check_password_hash
-from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+from werkzeug.security import (
+    check_password_hash,
+    generate_password_hash,
+)
+
+from itsdangerous import (
+    URLSafeTimedSerializer,
+    BadSignature,
+    SignatureExpired,
+)
 
 
 # =========================================================
@@ -33,14 +41,16 @@ app.config["SECRET_KEY"] = os.environ.get(
     "troque-esta-chave-em-producao"
 )
 
+
 # =========================================================
-# INICIALIZAÇÃO AUTOMÁTICA DO BANCO DE DADOS
+# BANCO DE DADOS
 # =========================================================
 
 def init_db():
 
     db = sqlite3.connect(DB_PATH)
 
+    # Tabela dos administradores
     db.execute("""
         CREATE TABLE IF NOT EXISTS admins (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,6 +59,7 @@ def init_db():
         )
     """)
 
+    # Tabela das mensagens
     db.execute("""
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,10 +70,45 @@ def init_db():
         )
     """)
 
+    # =====================================================
+    # CRIAR ADMINISTRADOR AUTOMATICAMENTE
+    # =====================================================
+
+    admin_username = os.environ.get("ADMIN_USERNAME")
+    admin_password = os.environ.get("ADMIN_PASSWORD")
+
+    if admin_username and admin_password:
+
+        existing_admin = db.execute(
+            """
+            SELECT id
+            FROM admins
+            WHERE username = ?
+            """,
+            (admin_username,)
+        ).fetchone()
+
+        if not existing_admin:
+
+            db.execute(
+                """
+                INSERT INTO admins (
+                    username,
+                    password_hash
+                )
+                VALUES (?, ?)
+                """,
+                (
+                    admin_username,
+                    generate_password_hash(admin_password),
+                )
+            )
+
     db.commit()
     db.close()
 
 
+# Criar banco/tabelas ao iniciar
 init_db()
 
 
@@ -76,7 +122,7 @@ token_serializer = URLSafeTimedSerializer(
 
 
 # =========================================================
-# BANCO DE DADOS
+# CONEXÃO COM BANCO
 # =========================================================
 
 def get_db():
@@ -100,7 +146,7 @@ def close_db(exception=None):
 
 
 # =========================================================
-# LOGIN DO PAINEL WEB
+# PROTEÇÃO DO PAINEL
 # =========================================================
 
 def login_required(view):
@@ -130,7 +176,7 @@ def index():
 
 
 # =========================================================
-# LOGIN
+# LOGIN DO PAINEL
 # =========================================================
 
 @app.route("/login", methods=["GET", "POST"])
@@ -214,6 +260,70 @@ def admin():
 
 
 # =========================================================
+# RECEBER MENSAGEM ANÓNIMA
+# =========================================================
+
+@app.route("/enviar", methods=["POST"])
+def enviar():
+
+    category = request.form.get(
+        "category",
+        ""
+    ).strip()
+
+    message = request.form.get(
+        "message",
+        ""
+    ).strip()
+
+    if not category or not message:
+
+        flash(
+            "Preencha todos os campos.",
+            "error"
+        )
+
+        return redirect(
+            url_for("index")
+        )
+
+    created_at = datetime.now(
+        timezone.utc
+    ).isoformat()
+
+    db = get_db()
+
+    db.execute(
+        """
+        INSERT INTO messages (
+            category,
+            message,
+            status,
+            created_at
+        )
+        VALUES (?, ?, ?, ?)
+        """,
+        (
+            category,
+            message,
+            "Não lida",
+            created_at
+        )
+    )
+
+    db.commit()
+
+    flash(
+        "A tua mensagem foi enviada com sucesso.",
+        "success"
+    )
+
+    return redirect(
+        url_for("index")
+    )
+
+
+# =========================================================
 # API - LOGIN DA APP ANDROID
 # =========================================================
 
@@ -278,7 +388,7 @@ def api_login():
 
 
 # =========================================================
-# AUTENTICAÇÃO DA API
+# VERIFICAR TOKEN DA API
 # =========================================================
 
 def get_api_admin():
@@ -288,15 +398,11 @@ def get_api_admin():
         ""
     )
 
-    if not authorization.startswith(
-        "Bearer "
-    ):
+    if not authorization.startswith("Bearer "):
 
         return None
 
-    token = authorization[
-        7:
-    ].strip()
+    token = authorization[7:].strip()
 
     if not token:
 
@@ -367,7 +473,7 @@ def api_messages():
 
 
 # =========================================================
-# API - ALTERAR STATUS DA MENSAGEM
+# API - ALTERAR STATUS
 # =========================================================
 
 @app.route(
@@ -478,73 +584,6 @@ def api_delete_message(message_id):
         "success": True,
         "message": "Mensagem apagada."
     })
-
-
-# =========================================================
-# RECEBER NOVA MENSAGEM ANÓNIMA
-# =========================================================
-
-@app.route(
-    "/enviar",
-    methods=["POST"]
-)
-def enviar():
-
-    category = request.form.get(
-        "category",
-        ""
-    ).strip()
-
-    message = request.form.get(
-        "message",
-        ""
-    ).strip()
-
-    if not category or not message:
-
-        flash(
-            "Preencha todos os campos.",
-            "error"
-        )
-
-        return redirect(
-            url_for("index")
-        )
-
-    created_at = datetime.now(
-        timezone.utc
-    ).isoformat()
-
-    db = get_db()
-
-    db.execute(
-        """
-        INSERT INTO messages (
-            category,
-            message,
-            status,
-            created_at
-        )
-        VALUES (?, ?, ?, ?)
-        """,
-        (
-            category,
-            message,
-            "Não lida",
-            created_at
-        )
-    )
-
-    db.commit()
-
-    flash(
-        "A tua mensagem foi enviada com sucesso.",
-        "success"
-    )
-
-    return redirect(
-        url_for("index")
-    )
 
 
 # =========================================================
