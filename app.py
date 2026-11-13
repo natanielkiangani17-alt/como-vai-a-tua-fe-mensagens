@@ -1,3 +1,4 @@
+```python
 import os
 import sqlite3
 from datetime import datetime, timezone
@@ -33,7 +34,43 @@ app.config["SECRET_KEY"] = os.environ.get(
     "troque-esta-chave-em-producao"
 )
 
-# Sistema de tokens usado pela aplicação Android
+# =========================================================
+# INICIALIZAÇÃO AUTOMÁTICA DO BANCO DE DADOS
+# =========================================================
+
+def init_db():
+
+    db = sqlite3.connect(DB_PATH)
+
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS admins (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL
+        )
+    """)
+
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT NOT NULL,
+            message TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'Não lida',
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    db.commit()
+    db.close()
+
+
+init_db()
+
+
+# =========================================================
+# SISTEMA DE TOKENS DA APP ANDROID
+# =========================================================
+
 token_serializer = URLSafeTimedSerializer(
     app.config["SECRET_KEY"]
 )
@@ -84,117 +121,20 @@ def login_required(view):
 
 
 # =========================================================
-# PÁGINA PÚBLICA
+# PÁGINA PRINCIPAL
 # =========================================================
 
 @app.route("/")
 def index():
 
-    return render_template(
-        "index.html"
-    )
+    return render_template("index.html")
 
 
 # =========================================================
-# ENVIO DE MENSAGEM ANÓNIMA
+# LOGIN
 # =========================================================
 
-@app.post("/enviar")
-def enviar():
-
-    # Proteção simples contra bots
-    if request.form.get("website"):
-
-        return redirect(
-            url_for("index")
-        )
-
-    category = request.form.get(
-        "category",
-        ""
-    ).strip()
-
-    message = request.form.get(
-        "message",
-        ""
-    ).strip()
-
-    allowed = {
-        "Pedido de oração",
-        "Testemunho",
-        "Pedido de ajuda",
-        "Mensagem",
-        "Outro",
-    }
-
-    if category not in allowed:
-
-        flash(
-            "Escolha uma categoria válida.",
-            "error"
-        )
-
-        return redirect(
-            url_for("index")
-        )
-
-    if len(message) < 5:
-
-        flash(
-            "Escreva uma mensagem um pouco mais completa.",
-            "error"
-        )
-
-        return redirect(
-            url_for("index")
-        )
-
-    if len(message) > 5000:
-
-        flash(
-            "A mensagem é demasiado longa.",
-            "error"
-        )
-
-        return redirect(
-            url_for("index")
-        )
-
-    db = get_db()
-
-    db.execute(
-        """
-        INSERT INTO messages
-        (category, message, status, created_at)
-        VALUES (?, ?, 'Não lida', ?)
-        """,
-        (
-            category,
-            message,
-            datetime.now(timezone.utc).isoformat(),
-        ),
-    )
-
-    db.commit()
-
-    flash(
-        "A tua mensagem foi enviada anonimamente. Obrigado por partilhares.",
-        "success"
-    )
-
-    return redirect(
-        url_for("index")
-    )
-
-
-# =========================================================
-# LOGIN WEB
-# =========================================================
-
-@app.route(
-    "/login",
-    methods=["GET", "POST"]
-)
+@app.route("/login", methods=["GET", "POST"])
 def login():
 
     if request.method == "POST":
@@ -215,7 +155,7 @@ def login():
             FROM admins
             WHERE username = ?
             """,
-            (username,),
+            (username,)
         ).fetchone()
 
         if admin and check_password_hash(
@@ -223,10 +163,7 @@ def login():
             password
         ):
 
-            session.clear()
-
             session["admin_id"] = admin["id"]
-
             session["admin_username"] = admin["username"]
 
             return redirect(
@@ -238,16 +175,14 @@ def login():
             "error"
         )
 
-    return render_template(
-        "login.html"
-    )
+    return render_template("login.html")
 
 
 # =========================================================
 # LOGOUT
 # =========================================================
 
-@app.post("/logout")
+@app.route("/logout")
 def logout():
 
     session.clear()
@@ -265,16 +200,9 @@ def logout():
 @login_required
 def admin():
 
-    db = get_db()
-
-    messages = db.execute(
+    messages = get_db().execute(
         """
-        SELECT
-            id,
-            category,
-            message,
-            status,
-            created_at
+        SELECT *
         FROM messages
         ORDER BY id DESC
         """
@@ -282,110 +210,76 @@ def admin():
 
     return render_template(
         "admin.html",
-        messages=messages,
-        username=session.get(
-            "admin_username"
-        ),
+        messages=messages
     )
 
 
 # =========================================================
-# ALTERAR ESTADO PELO PAINEL WEB
+# API - LOGIN DA APP ANDROID
 # =========================================================
 
-@app.post(
-    "/admin/message/<int:message_id>/status"
-)
-@login_required
-def change_status(message_id):
+@app.route("/api/login", methods=["POST"])
+def api_login():
 
-    status = request.form.get(
-        "status",
-        "Não lida"
+    data = request.get_json(
+        silent=True
+    ) or {}
+
+    username = str(
+        data.get("username", "")
+    ).strip()
+
+    password = str(
+        data.get("password", "")
     )
 
-    if status not in {
-        "Não lida",
-        "Lida",
-        "Arquivada",
-    }:
+    if not username or not password:
 
-        status = "Não lida"
+        return jsonify({
+            "success": False,
+            "error": "Utilizador e palavra-passe são obrigatórios."
+        }), 400
 
-    db = get_db()
-
-    db.execute(
+    admin = get_db().execute(
         """
-        UPDATE messages
-        SET status = ?
-        WHERE id = ?
+        SELECT *
+        FROM admins
+        WHERE username = ?
         """,
-        (
-            status,
-            message_id,
-        ),
-    )
+        (username,)
+    ).fetchone()
 
-    db.commit()
+    if not admin:
 
-    return redirect(
-        url_for("admin")
-    )
+        return jsonify({
+            "success": False,
+            "error": "Credenciais inválidas."
+        }), 401
 
+    if not check_password_hash(
+        admin["password_hash"],
+        password
+    ):
 
-# =========================================================
-# APAGAR MENSAGEM PELO PAINEL WEB
-# =========================================================
+        return jsonify({
+            "success": False,
+            "error": "Credenciais inválidas."
+        }), 401
 
-@app.post(
-    "/admin/message/<int:message_id>/delete"
-)
-@login_required
-def delete_message(message_id):
+    token = token_serializer.dumps({
+        "admin_id": admin["id"],
+        "username": admin["username"]
+    })
 
-    db = get_db()
-
-    db.execute(
-        """
-        DELETE FROM messages
-        WHERE id = ?
-        """,
-        (message_id,),
-    )
-
-    db.commit()
-
-    return redirect(
-        url_for("admin")
-    )
+    return jsonify({
+        "success": True,
+        "token": token,
+        "username": admin["username"]
+    })
 
 
 # =========================================================
-# ========================= API ===========================
-# =========================================================
-
-
-# =========================================================
-# CRIAR TOKEN
-# =========================================================
-
-def create_api_token(
-    admin_id,
-    username
-):
-
-    data = {
-        "admin_id": admin_id,
-        "username": username,
-    }
-
-    return token_serializer.dumps(
-        data
-    )
-
-
-# =========================================================
-# VALIDAR TOKEN
+# AUTENTICAÇÃO DA API
 # =========================================================
 
 def get_api_admin():
@@ -401,7 +295,9 @@ def get_api_admin():
 
         return None
 
-    token = authorization[7:].strip()
+    token = authorization[
+        7:
+    ].strip()
 
     if not token:
 
@@ -425,80 +321,10 @@ def get_api_admin():
 
 
 # =========================================================
-# LOGIN DA APLICAÇÃO
+# API - LISTAR MENSAGENS
 # =========================================================
 
-@app.post("/api/login")
-def api_login():
-
-    data = request.get_json(
-        silent=True
-    ) or {}
-
-    username = str(
-        data.get(
-            "username",
-            ""
-        )
-    ).strip()
-
-    password = str(
-        data.get(
-            "password",
-            ""
-        )
-    )
-
-    if not username or not password:
-
-        return jsonify({
-            "success": False,
-            "error": "Utilizador e palavra-passe são obrigatórios."
-        }), 400
-
-    admin = get_db().execute(
-        """
-        SELECT *
-        FROM admins
-        WHERE username = ?
-        """,
-        (username,),
-    ).fetchone()
-
-    if not admin:
-
-        return jsonify({
-            "success": False,
-            "error": "Credenciais inválidas."
-        }), 401
-
-    if not check_password_hash(
-        admin["password_hash"],
-        password
-    ):
-
-        return jsonify({
-            "success": False,
-            "error": "Credenciais inválidas."
-        }), 401
-
-    token = create_api_token(
-        admin["id"],
-        admin["username"]
-    )
-
-    return jsonify({
-        "success": True,
-        "token": token,
-        "username": admin["username"]
-    })
-
-
-# =========================================================
-# LISTAR MENSAGENS
-# =========================================================
-
-@app.get("/api/messages")
+@app.route("/api/messages", methods=["GET"])
 def api_messages():
 
     admin = get_api_admin()
@@ -510,9 +336,7 @@ def api_messages():
             "error": "Não autorizado."
         }), 401
 
-    db = get_db()
-
-    messages = db.execute(
+    messages = get_db().execute(
         """
         SELECT
             id,
@@ -527,14 +351,14 @@ def api_messages():
 
     result = []
 
-    for item in messages:
+    for message in messages:
 
         result.append({
-            "id": item["id"],
-            "category": item["category"],
-            "message": item["message"],
-            "status": item["status"],
-            "created_at": item["created_at"],
+            "id": message["id"],
+            "category": message["category"],
+            "message": message["message"],
+            "status": message["status"],
+            "created_at": message["created_at"]
         })
 
     return jsonify({
@@ -544,13 +368,14 @@ def api_messages():
 
 
 # =========================================================
-# ALTERAR ESTADO PELA APP
+# API - ALTERAR STATUS DA MENSAGEM
 # =========================================================
 
-@app.post(
-    "/api/messages/<int:message_id>/status"
+@app.route(
+    "/api/messages/<int:message_id>/status",
+    methods=["POST"]
 )
-def api_change_status(message_id):
+def api_message_status(message_id):
 
     admin = get_api_admin()
 
@@ -567,23 +392,25 @@ def api_change_status(message_id):
 
     status = data.get(
         "status",
-        "Não lida"
+        ""
     )
 
-    if status not in {
+    allowed_statuses = [
         "Não lida",
         "Lida",
-        "Arquivada",
-    }:
+        "Arquivada"
+    ]
+
+    if status not in allowed_statuses:
 
         return jsonify({
             "success": False,
-            "error": "Estado inválido."
+            "error": "Status inválido."
         }), 400
 
     db = get_db()
 
-    db.execute(
+    cursor = db.execute(
         """
         UPDATE messages
         SET status = ?
@@ -591,23 +418,32 @@ def api_change_status(message_id):
         """,
         (
             status,
-            message_id,
-        ),
+            message_id
+        )
     )
 
     db.commit()
 
+    if cursor.rowcount == 0:
+
+        return jsonify({
+            "success": False,
+            "error": "Mensagem não encontrada."
+        }), 404
+
     return jsonify({
-        "success": True
+        "success": True,
+        "message": "Status atualizado."
     })
 
 
 # =========================================================
-# APAGAR MENSAGEM PELA APP
+# API - APAGAR MENSAGEM
 # =========================================================
 
-@app.delete(
-    "/api/messages/<int:message_id>"
+@app.route(
+    "/api/messages/<int:message_id>",
+    methods=["DELETE"]
 )
 def api_delete_message(message_id):
 
@@ -622,27 +458,105 @@ def api_delete_message(message_id):
 
     db = get_db()
 
-    db.execute(
+    cursor = db.execute(
         """
         DELETE FROM messages
         WHERE id = ?
         """,
-        (message_id,),
+        (message_id,)
     )
 
     db.commit()
 
+    if cursor.rowcount == 0:
+
+        return jsonify({
+            "success": False,
+            "error": "Mensagem não encontrada."
+        }), 404
+
     return jsonify({
-        "success": True
+        "success": True,
+        "message": "Mensagem apagada."
     })
 
 
 # =========================================================
-# INICIAR SERVIDOR
+# RECEBER NOVA MENSAGEM ANÓNIMA
+# =========================================================
+
+@app.route(
+    "/enviar",
+    methods=["POST"]
+)
+def enviar():
+
+    category = request.form.get(
+        "category",
+        ""
+    ).strip()
+
+    message = request.form.get(
+        "message",
+        ""
+    ).strip()
+
+    if not category or not message:
+
+        flash(
+            "Preencha todos os campos.",
+            "error"
+        )
+
+        return redirect(
+            url_for("index")
+        )
+
+    created_at = datetime.now(
+        timezone.utc
+    ).isoformat()
+
+    db = get_db()
+
+    db.execute(
+        """
+        INSERT INTO messages (
+            category,
+            message,
+            status,
+            created_at
+        )
+        VALUES (?, ?, ?, ?)
+        """,
+        (
+            category,
+            message,
+            "Não lida",
+            created_at
+        )
+    )
+
+    db.commit()
+
+    flash(
+        "A tua mensagem foi enviada com sucesso.",
+        "success"
+    )
+
+    return redirect(
+        url_for("index")
+    )
+
+
+# =========================================================
+# EXECUTAR LOCALMENTE
 # =========================================================
 
 if __name__ == "__main__":
 
     app.run(
+        host="0.0.0.0",
+        port=5000,
         debug=True
     )
+```
